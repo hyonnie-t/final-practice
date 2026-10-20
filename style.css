@@ -143,3 +143,16 @@ main input[type=text], main select, main textarea { padding: 11px 13px; }
   .hero-step, .hero-field span, .hero-note { font-size: 15px; }
   main > * + * { margin-top: 1.25rem; }
 }
+
+/* 서술형(단답) — 채점 요소 칩·답안 입력 */
+.role-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 700; padding: 3px 11px; border-radius: 9999px; border: 1.5px solid; white-space: nowrap; }
+.role-0 { background: #eef2ff; border-color: #a5b4fc; color: #3730a3; }
+.role-1 { background: #ecfeff; border-color: #67e8f9; color: #155e75; }
+.role-2 { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
+.role-3 { background: #fff1f2; border-color: #fda4af; color: #9f1239; }
+.role-4 { background: #ecfdf5; border-color: #6ee7b7; color: #065f46; }
+.short-tag { background: #fef3c7; color: #92400e; }
+.short-input { width: 100%; border: 1.5px solid #cbd5e1; border-radius: 14px; padding: 12px 14px; font-size: 17px; line-height: 1.7; background: #fff; }
+.short-input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px #e0e7ff; }
+.short-input:disabled { background: #f8fafc; color: #475569; }
+@media (min-width: 768px) { .short-input { font-size: 18px; } .role-chip { font-size: 15px; } }

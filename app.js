@@ -130,7 +130,7 @@ let Q = null; // { title, items: [{kind:'base'|'student', id, data}], idx, resul
 
 function startSession(title, ids) {
   if (!ids.length) { toast('풀 문제가 없어요'); return; }
-  Q = { title, items: ids.map(id => ({ kind: 'base', id, data: PROB[id] })), idx: 0, results: [], picks: [], checked: false };
+  Q = { title, items: ids.map(id => ({ kind: 'base', id, data: PROB[id] })), idx: 0, results: [], picks: [], text: '', shortG: null, checked: false };
   go('quiz');
 }
 function startRandom(n) { startSession(n === PROBLEMS.length ? '전체 랜덤' : `랜덤 ${n}문제`, shuffle(PROBLEMS.map(p => p.id)).slice(0, n)); }
@@ -148,10 +148,76 @@ function questionHTML(p, student) {
   return `<p class="qtext text-sm font-bold leading-relaxed text-slate-900">${q}${p.pts ? ` <span class="text-xs font-normal text-slate-400">(${p.pts}점)</span>` : ''}</p>${box}${bogi}`;
 }
 
+// ───────── 서술형(단답) ─────────
+// 역할(누가·언제·무엇을·왜·결과): 학생이 문제를 만들 때 채점 요소를 이 틀로 적는다
+const ROLES = {
+  '누가': { ic: 'fa-user', hint: '인물·집단·나라', ph: '예: 세종, 세종대왕', tip: '누가(주체)' },
+  '언제': { ic: 'fa-clock', hint: '시기·순서', ph: '예: 15세기, 조선 전기', tip: '언제(시기)' },
+  '무엇을': { ic: 'fa-scroll', hint: '사건·정책·제도·문화', ph: '예: 훈민정음, 훈민정음 창제', tip: '무엇을(사건·정책)' },
+  '왜': { ic: 'fa-circle-question', hint: '원인·배경·목적', ph: '예: 백성, 쉽게 글자, 문자 생활', tip: '왜(원인·목적)' },
+  '결과': { ic: 'fa-arrow-trend-up', hint: '결과·영향·변화', ph: '예: 문자 생활 확대, 민족 문화 발전', tip: '결과(영향)' }
+};
+const ROLE_NAMES = Object.keys(ROLES);
+const roleChip = (r, cls = '') => `<span class="role-chip role-${ROLE_NAMES.indexOf(r)} ${cls}"><i class="fa-solid ${ROLES[r].ic}"></i>${r}</span>`;
+// 공백·문장부호·대소문자를 없애고 비교(“세종 대왕”과 “세종대왕”을 같게)
+const normAns = (s) => String(s ?? '').toLowerCase().replace(/[\s.,·ㆍ\-_'"“”‘’()\[\]{}!?~:;/\\]/g, '');
+const gradeShort = (p, text) => {
+  const t = normAns(text);
+  return (p.els || []).map(e => ({ r: e.r, ok: e.k.some(k => normAns(k) && t.includes(normAns(k))) }));
+};
+
+function shortAfter(p) {
+  const g = Q.shortG;
+  const ok = g.every(x => x.ok);
+  const wrongCnt = g.filter(x => !x.ok).length;
+  return `
+    <div class="rounded-xl p-3 ${ok ? 'bg-emerald-50 border border-emerald-200' : 'bg-rose-50 border border-rose-200'} space-y-2">
+      <p class="text-sm font-bold ${ok ? 'text-emerald-700' : 'text-rose-700'}"><i class="fa-solid ${ok ? 'fa-circle-check' : 'fa-circle-xmark'} mr-1"></i>${ok ? '정답! 필요한 내용이 모두 들어 있어요' : `${g.length}개 요소 중 ${g.length - wrongCnt}개를 썼어요`}</p>
+      <div class="space-y-1.5">
+        ${g.map((x, i) => `<div class="flex flex-wrap items-center gap-1.5 text-xs bg-white/70 rounded-lg px-2 py-1.5">
+          <i class="fa-solid ${x.ok ? 'fa-circle-check text-emerald-500' : 'fa-circle-xmark text-rose-500'}"></i>
+          ${roleChip(x.r)}
+          <span class="text-slate-700">인정 낱말: ${p.els[i].k.map(esc).join(' / ')}</span>
+          ${x.ok ? '' : `<button onclick="overrideShort(${i})" class="ml-auto text-[11px] text-indigo-600 underline">표현만 다르게 썼어요 → 맞음으로</button>`}
+        </div>`).join('')}
+      </div>
+      <p class="text-xs text-slate-700">내가 쓴 답: <span class="text-slate-800">${esc(Q.text)}</span></p>
+      <p class="text-xs"><b class="text-slate-600">모범 답안</b> <span class="text-slate-800">${esc(p.model)}</span></p>
+      <p class="text-xs leading-relaxed text-slate-700">${esc(p.exp || '해설이 없어요.')}</p>
+    </div>`;
+}
+
+function shortInput(p) {
+  return `<div class="space-y-2">
+    <p class="text-xs font-bold text-slate-600">내 답에 이 내용이 들어가야 해요</p>
+    <div class="flex flex-wrap gap-1.5">${p.els.map(e => roleChip(e.r)).join('')}</div>
+    <textarea id="sans" rows="4" maxlength="200" ${Q.checked ? 'disabled' : ''} oninput="typeShort(this.value)" class="short-input" placeholder="위 내용이 모두 들어가게 한두 문장으로 써 보세요">${esc(Q.text)}</textarea>
+    ${Q.checked ? '' : '<p class="text-[11px] text-slate-500">낱말이 들어 있는지로 채점해요. 교과서에 나온 말로 쓰면 가장 정확해요.</p>'}
+  </div>`;
+}
+
+function overrideShort(i) {
+  Q.shortG[i].ok = true;
+  const ok = Q.shortG.every(x => x.ok);
+  const it = Q.items[Q.idx];
+  Q.results[Q.results.length - 1].ok = ok;
+  S.studentSolved[it.id] = ok; save();
+  renderQuiz();
+}
+
+function typeShort(v) {
+  Q.text = v;
+  const b = document.getElementById('sbtn');
+  const on = normAns(v).length >= 2;
+  b.disabled = !on;
+  b.className = `w-full py-3 font-bold text-sm rounded-xl ${on ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'}`;
+}
+
 function renderQuiz() {
   const it = Q.items[Q.idx];
   const p = it.data;
   const student = it.kind === 'student';
+  const isShort = p.type === 'short';
   const multi = Array.isArray(p.ans);
   const ansArr = multi ? p.ans : [p.ans];
   const need = ansArr.length;
@@ -165,11 +231,20 @@ function renderQuiz() {
   };
 
   const head = student
-    ? `<span class="student-tag"><i class="fa-solid fa-user-pen"></i>학생 출제 · ${esc(p.nick || '익명')}</span>`
+    ? `<span class="student-tag"><i class="fa-solid fa-user-pen"></i>학생 출제 · ${esc(p.nick || '익명')}</span>${isShort ? '<span class="student-tag short-tag">서술형</span>' : ''}`
     : `<span class="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">${p.src} ${p.no}번</span>`;
 
   let after = '';
-  if (Q.checked) {
+  if (Q.checked && isShort) {
+    const concepts = (p.c || []).filter(c => CONCEPTS[c]);
+    after = `${shortAfter(p)}
+      ${concepts.length ? `<div class="bg-white border border-slate-200 rounded-xl p-3 space-y-2">
+        <p class="text-[11px] font-bold text-slate-500"><i class="fa-solid fa-brain mr-1 text-indigo-500"></i>이 문제를 풀려면 알아야 할 것</p>
+        ${concepts.map(cid => conceptMini(cid)).join('')}
+      </div>` : ''}
+      <button onclick="reportStudent('${p.id}')" class="text-[11px] text-slate-500 underline"><i class="fa-solid fa-flag mr-1"></i>문제에 오류가 있어요 (신고)</button>
+      <button onclick="nextQ()" class="w-full py-3 bg-indigo-600 text-white font-bold text-sm rounded-xl">${Q.idx + 1 < Q.items.length ? '다음 문제 →' : '결과 보기'}</button>`;
+  } else if (Q.checked) {
     const ok = Q.results[Q.results.length - 1].ok;
     const concepts = (p.c || []).filter(c => CONCEPTS[c]);
     after = `
@@ -185,6 +260,9 @@ function renderQuiz() {
       </div>` : ''}
       ${student ? `<button onclick="reportStudent('${p.id}')" class="text-[11px] text-slate-500 underline"><i class="fa-solid fa-flag mr-1"></i>문제에 오류가 있어요 (신고)</button>` : ''}
       <button onclick="nextQ()" class="w-full py-3 bg-indigo-600 text-white font-bold text-sm rounded-xl">${Q.idx + 1 < Q.items.length ? '다음 문제 →' : '결과 보기'}</button>`;
+  } else if (isShort) {
+    const on = normAns(Q.text).length >= 2;
+    after = `<button id="sbtn" onclick="checkQ()" ${on ? '' : 'disabled'} class="w-full py-3 font-bold text-sm rounded-xl ${on ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'}">정답 확인</button>`;
   } else {
     after = `<button onclick="checkQ()" ${Q.picks.length === need ? '' : 'disabled'} class="w-full py-3 font-bold text-sm rounded-xl ${Q.picks.length === need ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'}">${multi ? `답 ${need}개를 고르고 확인` : '정답 확인'}</button>`;
   }
@@ -200,6 +278,7 @@ function renderQuiz() {
       ${student ? '<p class="md:col-span-2 text-[10px] text-violet-600 bg-violet-50 rounded-lg px-2 py-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i>학생이 만든 문제라 오류가 있을 수 있어요. 교과서와 꼭 비교해 보세요.</p>' : ''}
       <div class="space-y-3">${questionHTML(p, student)}</div>
       <div class="space-y-2">
+        ${isShort ? shortInput(p) : ''}
         ${p.ch.map((c, i) => `<button class="choice ${choiceCls(i)}" ${Q.checked ? 'disabled' : ''} onclick="pickQ(${i + 1})"><span class="num">${i + 1}</span><span>${student ? esc(c) : c === CIRCLE[i] ? '' : c}</span></button>`).join('')}
       </div>
     </article>
@@ -226,6 +305,15 @@ function pickQ(n) {
 
 function checkQ() {
   const it = Q.items[Q.idx];
+  if (it.data.type === 'short') {
+    Q.shortG = gradeShort(it.data, Q.text);
+    const ok = Q.shortG.every(x => x.ok);
+    Q.results.push({ id: it.id, kind: it.kind, ok, pick: [] });
+    S.studentSolved[it.id] = ok; save();
+    Q.checked = true;
+    renderQuiz();
+    return;
+  }
   const ansArr = Array.isArray(it.data.ans) ? it.data.ans : [it.data.ans];
   const ok = ansArr.length === Q.picks.length && ansArr.every(a => Q.picks.includes(a));
   Q.results.push({ id: it.id, kind: it.kind, ok, pick: Q.picks.slice() });
@@ -238,7 +326,7 @@ function checkQ() {
 
 function nextQ() {
   if (Q.idx + 1 >= Q.items.length) { go('result'); return; }
-  Q.idx++; Q.picks = []; Q.checked = false;
+  Q.idx++; Q.picks = []; Q.text = ''; Q.shortG = null; Q.checked = false;
   renderQuiz(); window.scrollTo(0, 0);
 }
 
@@ -610,7 +698,7 @@ function drawStudentList() {
       const flagged = (p.reports || 0) >= 3;
       return `<button onclick="startStudent('${p.id}')" class="w-full text-left bg-white rounded-xl border ${flagged ? 'border-amber-300 opacity-70' : 'border-slate-200'} p-3 space-y-1">
         <div class="flex flex-wrap gap-1.5 items-center">
-          <span class="student-tag"><i class="fa-solid fa-user-pen"></i>학생 출제 · ${esc(p.nick || '익명')}</span>${lvBadge(p.lv)}
+          <span class="student-tag"><i class="fa-solid fa-user-pen"></i>학생 출제 · ${esc(p.nick || '익명')}</span>${p.type === 'short' ? '<span class="student-tag short-tag">서술형</span>' : ''}${lvBadge(p.lv)}
           ${solved ? `<i class="fa-solid ${S.studentSolved[p.id] ? 'fa-circle-check text-emerald-500' : 'fa-circle-xmark text-rose-500'} ml-auto"></i>` : ''}
         </div>
         <p class="text-xs font-bold text-slate-800 leading-relaxed">${esc(p.q)}</p>
@@ -623,7 +711,7 @@ function startStudent(id) {
   let list = studentFilter === 'all' ? studentList : studentList.filter(p => p.topic === studentFilter);
   if (id) list = list.filter(p => p.id === id);
   if (!list.length) return;
-  Q = { title: '학생 출제 문제', items: shuffle(list).map(p => ({ kind: 'student', id: p.id, data: p })), idx: 0, results: [], picks: [], checked: false };
+  Q = { title: '학생 출제 문제', items: shuffle(list).map(p => ({ kind: 'student', id: p.id, data: p })), idx: 0, results: [], picks: [], text: '', shortG: null, checked: false };
   go('quiz');
 }
 
@@ -660,18 +748,41 @@ function renderWrite() {
         </select></label>
       <div class="space-y-1"><span class="font-bold text-slate-600">이 문제를 풀려면 알아야 할 지식 <span class="font-normal text-slate-400">(1개 이상)</span></span>
         <div id="wconcepts" class="bg-slate-50 rounded-lg p-2">${conceptOpts(TOPICS[0].id)}</div></div>
-      <label class="block space-y-1"><span class="font-bold text-slate-600">발문</span>
-        <input type="text" name="q" maxlength="120" required class="w-full border border-slate-300 rounded-lg p-2" placeholder="예: 다음 정책을 펼친 국왕으로 옳은 것은?"></label>
-      <label class="block space-y-1"><span class="font-bold text-slate-600">자료 <span class="font-normal text-slate-400">(선택)</span></span>
-        <textarea name="box" rows="3" maxlength="400" class="w-full border border-slate-300 rounded-lg p-2" placeholder="문제에 넣을 자료나 사료"></textarea></label>
-      <div class="space-y-1.5"><span class="font-bold text-slate-600">선택지 (정답에 체크)</span>
-        ${[1, 2, 3, 4, 5].map(n => `<div class="flex items-center gap-2"><input type="radio" name="ans" value="${n}" required><span class="font-bold text-slate-500">${n}</span><input type="text" name="ch${n}" maxlength="80" required class="flex-1 border border-slate-300 rounded-lg p-1.5"></div>`).join('')}
+      <div class="space-y-1.5"><span class="font-bold text-slate-600">문제 틀 고르기 <span class="font-normal text-slate-400">(누르면 발문 예시가 들어가요)</span></span>
+        <div class="flex flex-wrap gap-1.5">${QTEMPLATES.map((t, i) => `<button type="button" onclick="useTemplate(${i})" class="chip">${t.name}</button>`).join('')}</div></div>
+      <label class="block space-y-1"><span class="font-bold text-slate-600">발문 <span class="font-normal text-slate-400">(서술형이에요. 답은 한두 문장)</span></span>
+        <input type="text" name="q" maxlength="120" required class="w-full border border-slate-300 rounded-lg p-2" placeholder="예: 다음 정책을 펼친 인물은 누구이며, 그렇게 한 까닭을 쓰시오."></label>
+      <label class="block space-y-1"><span class="font-bold text-slate-600">사료·자료 <span class="font-normal text-slate-400">(선택 — 사료를 보여 주면 더 좋은 역사 문제예요. 출처도 함께)</span></span>
+        <textarea name="box" rows="3" maxlength="400" class="w-full border border-slate-300 rounded-lg p-2" placeholder="예: “…” — 『조선왕조실록』"></textarea></label>
+      <div class="space-y-1.5"><span class="font-bold text-slate-600">채점 요소 <span class="font-normal text-slate-400">(2개 이상 채우기 · 인정할 낱말을 쉼표로 여러 개)</span></span>
+        <p class="text-[11px] text-slate-500">이 답을 쓸 때 꼭 들어가야 하는 내용이에요. 친구가 쓴 답에 낱말이 들어 있으면 그 요소는 맞는 걸로 채점돼요.</p>
+        ${ROLE_NAMES.map(r => `<div class="grid grid-cols-[84px_1fr] md:grid-cols-[110px_1fr] gap-2 items-center">
+          ${roleChip(r)}
+          <input type="text" name="el_${r}" maxlength="80" class="border border-slate-300 rounded-lg p-1.5" placeholder="${ROLES[r].ph}"></div>
+          <p class="text-[10px] text-slate-400 -mt-1 pl-1">${ROLES[r].hint}</p>`).join('')}
       </div>
-      <label class="block space-y-1"><span class="font-bold text-slate-600">해설</span>
-        <textarea name="exp" rows="3" maxlength="400" required class="w-full border border-slate-300 rounded-lg p-2" placeholder="왜 그 답이 맞는지, 다른 선택지는 왜 틀린지"></textarea></label>
-      <p class="text-[10px] text-slate-500 bg-slate-50 rounded-lg p-2">올린 문제는 '학생 출제' 표시와 함께 모든 친구에게 공유돼요(선생님은 작성자를 볼 수 있어요). 한 사람이 10개까지 올릴 수 있어요. 중요도는 고른 지식을 바탕으로 자동으로 매겨져요. 한 번 올리면 고칠 수 없으니 교과서로 한 번 더 확인하세요.</p>
+      <label class="block space-y-1"><span class="font-bold text-slate-600">모범 답안 <span class="font-normal text-slate-400">(위 낱말이 모두 들어간 한두 문장)</span></span>
+        <textarea name="model" rows="2" maxlength="150" required class="w-full border border-slate-300 rounded-lg p-2" placeholder="예: 세종이 백성이 쉽게 쓸 수 있도록 훈민정음을 만들었다."></textarea></label>
+      <label class="block space-y-1"><span class="font-bold text-slate-600">해설 <span class="font-normal text-slate-400">(그 시대 상황, 이 일의 의미)</span></span>
+        <textarea name="exp" rows="3" maxlength="400" required class="w-full border border-slate-300 rounded-lg p-2" placeholder="예: 당시 한자는 어려워 백성이 글을 읽고 쓰기 힘들었다. 훈민정음으로 문자 생활이 넓어졌다."></textarea></label>
+      <p class="text-[10px] text-slate-500 bg-slate-50 rounded-lg p-2">올린 문제는 '학생 출제' 표시와 함께 모든 친구에게 공유돼요(선생님은 작성자를 볼 수 있어요). 한 사람이 10개까지 올릴 수 있어요. 올리기 전에 교과서와 비교해 낱말·연도를 확인하세요. 중요도는 고른 지식을 바탕으로 자동으로 매겨져요. 한 번 올리면 고칠 수 없으니 교과서로 한 번 더 확인하세요.</p>
       <button class="w-full py-3 bg-violet-600 text-white font-bold text-sm rounded-xl">문제 올리기</button>
     </form>`;
+}
+
+// 역사 서술형 문제 틀: 누르면 발문 예시를 채우고 알맞은 채점 요소 칸을 안내한다
+const QTEMPLATES = [
+  { name: '누가·무엇을·왜', q: '다음 정책을 펼친 인물은 누구이며, 그 정책의 목적은 무엇인지 쓰시오.', roles: ['누가', '무엇을', '왜'] },
+  { name: '원인(왜 일어났나)', q: '이 사건이 일어난 까닭(배경)을 쓰시오.', roles: ['무엇을', '왜'] },
+  { name: '결과·영향', q: '이 사건(정책)이 가져온 결과를 쓰시오.', roles: ['무엇을', '결과'] },
+  { name: '사료 속 인물·사건', q: '다음 자료와 관련된 인물과 사건을 쓰시오.', roles: ['누가', '무엇을'] },
+  { name: '시기·순서', q: '다음 사건이 일어난 시기와 그 사건의 내용을 쓰시오.', roles: ['언제', '무엇을'] }
+];
+function useTemplate(i) {
+  const t = QTEMPLATES[i], f = document.getElementById('wform');
+  f.q.value = t.q;
+  f.q.focus();
+  toast('채점 요소: ' + t.roles.join('·') + ' 칸을 채워 보세요');
 }
 
 async function submitWrite(e) {
@@ -679,12 +790,17 @@ async function submitWrite(e) {
   const f = e.target;
   const cids = [...f.querySelectorAll('input[name=wc]:checked')].map(x => x.value);
   if (!cids.length) { toast('알아야 할 지식을 1개 이상 골라 주세요'); return; }
+  const els = ROLE_NAMES.map(r => ({ r, k: f['el_' + r].value.split(/[,，、\n]/).map(x => x.trim()).filter(Boolean).slice(0, 5) })).filter(e => e.k.length);
+  if (els.length < 2) { toast('채점 요소를 2개 이상 채워 주세요 (누가·무엇을·왜 …)'); return; }
+  const model = f.model.value.trim();
+  const miss = els.find(e => !e.k.some(k => normAns(k) && normAns(model).includes(normAns(k))));
+  if (miss) { toast(`모범 답안에 '${miss.r}' 낱말(${miss.k.join('/')})이 없어요. 답안을 고치거나 낱말을 맞춰 주세요`); return; }
+  if (!els.some(e => e.r === '왜' || e.r === '결과') && !confirm("'왜'나 '결과'가 없으면 외우기 문제가 돼요.\n그래도 올릴까요?")) return;
   const p = {
-    nick: f.nick.value.trim(), topic: f.topic.value, c: cids, lv: studentLevel(cids),
-    q: f.q.value.trim(), box: f.box.value.trim(), ch: [1, 2, 3, 4, 5].map(n => f['ch' + n].value.trim()),
-    ans: Number(f.ans.value), exp: f.exp.value.trim()
+    type: 'short', nick: f.nick.value.trim(), topic: f.topic.value, c: cids, lv: studentLevel(cids),
+    q: f.q.value.trim(), box: f.box.value.trim(), els, model, exp: f.exp.value.trim()
   };
-  const btn = f.querySelector('button'); btn.disabled = true; btn.textContent = '올리는 중…';
+  const btn = f.querySelector('button[type=submit], button:not([type])'); btn.disabled = true; btn.textContent = '올리는 중…';
   try { await Share.add(p); toast('문제를 올렸어요!'); go('student'); }
   catch (err) { toast(err instanceof TypeError || err.name === 'AbortError' ? '서버에 연결하지 못했어요. 다시 시도해 주세요' : err.message); btn.disabled = false; btn.textContent = '문제 올리기'; }
 }
