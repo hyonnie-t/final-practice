@@ -49,7 +49,7 @@ textarea, input[type=text], select { font-size: 16px; }
 body { padding-bottom: 5.5rem; }
 
 /* ───── 디자인 개선 ───── */
-body { background: linear-gradient(180deg, #eef2ff 0, #f1f5f9 220px) fixed; min-height: 100vh; }
+body { min-height: 100vh; }
 .app-hdr { background: linear-gradient(135deg, #312e81 0%, #4338ca 60%, #6366f1 100%); box-shadow: 0 4px 16px rgba(49,46,129,.25); position: sticky; top: 0; z-index: 30; }
 .card, main section.bg-white, main .bg-white.rounded-xl, main .bg-white.rounded-2xl { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 4px 14px rgba(15,23,42,.05); }
 main button.bg-indigo-600 { background: linear-gradient(135deg, #4f46e5, #6366f1); box-shadow: 0 4px 10px rgba(79,70,229,.3); transition: transform .12s; }
@@ -84,4 +84,62 @@ input[type=text]:focus, select:focus, textarea:focus { border-color: #6366f1; bo
   .hero-title { font-size: 26px; }
   .hero-desc { font-size: 15px; }
   .hero-step, .hero-field span, .hero-note { font-size: 13px; }
+}
+
+/* ───── 시원시원 모드: final-test 기준(17px 기본 글자·굵은 제목·44px 터치·따뜻한 배경) ───── */
+:root { --bg: #f4f2ec; --brand: #3b3fa8; --ink: #1f2430; }
+body { font-family: Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", -apple-system, "Segoe UI", sans-serif; font-size: 17px; color: var(--ink); background: var(--bg); }
+body .text-\[9px\] { font-size: 12px; }
+body .text-\[10px\] { font-size: 13px; }
+body .text-\[11px\] { font-size: 14.5px; line-height: 1.6; }
+body .text-xs { font-size: 15.5px; line-height: 1.65; }
+body .text-sm { font-size: 17.5px; }
+body .text-base { font-size: 19px; }
+body .text-lg { font-size: 22px; }
+body .text-xl { font-size: 24px; }
+main.wrap { padding-top: 1.25rem; }
+main > * + * { margin-top: 1rem; }
+.app-hdr { background: linear-gradient(135deg, #2e3290 0%, #3b3fa8 70%, #4f53c4 100%); }
+.app-hdr .wrap { padding-top: 14px; padding-bottom: 14px; }
+.app-hdr h1 { font-size: 24px; font-weight: 800; line-height: 1.2; letter-spacing: -.01em; margin-top: 4px; }
+.app-hdr .rounded { font-size: 13px; padding: 2px 10px; border-radius: 999px; }
+#hdr-stat { font-size: 17px; }
+.app-hdr .w-24 { width: 9rem; height: .6rem; }
+.card, main section.bg-white, main .bg-white.rounded-xl, main .bg-white.rounded-2xl { border-color: #e3e0d6; box-shadow: 0 1px 2px rgba(31,36,48,.06), 0 4px 14px rgba(31,36,48,.06); }
+main section.card, main section.bg-white { padding: 18px; }
+main button { min-height: 44px; }
+main button.bg-indigo-600 { background: var(--brand); border-radius: 14px; padding-top: 16px; padding-bottom: 16px; font-size: 19px; }
+main button.bg-indigo-600 span { font-size: 13px; }
+main button.bg-white.border { border-radius: 14px; border-color: #e3e0d6; padding: 14px 10px; }
+main .grid > button.bg-white { padding: 14px 12px; }
+.choice { font-size: 17px; line-height: 1.6; padding: 14px 16px; border-radius: 14px; min-height: 52px; }
+.choice .num { width: 26px; height: 26px; font-size: 14px; }
+.qbox { font-size: 16.5px; line-height: 1.8; padding: 14px 16px; border-color: #e3e0d6; background: #fffaf0; border-color: #ecd9a8; }
+.tbl { font-size: 15px; }
+.chip { font-size: 15px; padding: 9px 16px; min-height: 40px; }
+.lv, .student-tag { font-size: 13px; padding: 2px 10px; }
+.nav-btn { font-size: 13px; min-height: 58px; }
+.nav-btn i { font-size: 20px; }
+textarea, input[type=text], select { font-size: 17px; border-radius: 12px; }
+main input[type=text], main select, main textarea { padding: 11px 13px; }
+.hero-reg { border-radius: 22px; padding: 22px 20px 18px; }
+.hero-title { font-size: 26px; }
+.hero-desc { font-size: 16px; }
+.hero-step, .hero-field span { font-size: 14px; }
+.hero-note { font-size: 14px; }
+.hero-field input { font-size: 18px; padding: 13px 14px; }
+.hero-btn { font-size: 18px; padding: 14px 20px; min-height: 52px; }
+@media (min-width: 768px) {
+  body { font-size: 18px; }
+  .app-hdr h1 { font-size: 30px; }
+  body .text-\[10px\] { font-size: 14px; }
+  body .text-\[11px\] { font-size: 16px; }
+  body .text-xs { font-size: 17px; }
+  body .text-sm { font-size: 19px; }
+  .choice, .qbox { font-size: 18px; }
+  .chip { font-size: 16px; }
+  .hero-title { font-size: 32px; }
+  .hero-desc { font-size: 18px; }
+  .hero-step, .hero-field span, .hero-note { font-size: 15px; }
+  main > * + * { margin-top: 1.25rem; }
 }
