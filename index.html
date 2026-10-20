@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기출 오답노트</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-100 text-slate-800 pb-20">
+
+    <header class="bg-indigo-900 text-white shadow-md sticky top-0 z-30">
+        <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
+            <button onclick="go('home')" class="text-left">
+                <span class="text-[10px] bg-indigo-700 text-indigo-200 px-2 py-0.5 rounded font-bold tracking-wider">3학년 역사 · 2학기 기말 대비</span>
+                <h1 class="text-base font-bold leading-tight">3개년 기출 오답노트</h1>
+            </button>
+            <div class="text-right">
+                <span id="hdr-stat" class="text-xs font-bold text-amber-300">0 / 0 풀이</span>
+                <div class="w-24 bg-indigo-950 rounded-full h-2 mt-1 border border-indigo-700/50">
+                    <div id="hdr-bar" class="bg-amber-400 h-full rounded-full transition-all duration-300" style="width:0%"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main id="view" class="max-w-md mx-auto px-4 pt-4 space-y-3"></main>
+
+    <nav class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 z-30">
+        <div class="max-w-md mx-auto grid grid-cols-5 text-[11px] text-center">
+            <button onclick="go('home')" data-nav="home" class="nav-btn py-2"><i class="fa-solid fa-house block text-base mb-0.5"></i>처음</button>
+            <button onclick="go('topics')" data-nav="topics" class="nav-btn py-2"><i class="fa-solid fa-layer-group block text-base mb-0.5"></i>주제별</button>
+            <button onclick="go('notes')" data-nav="notes" class="nav-btn py-2 relative"><i class="fa-solid fa-book-bookmark block text-base mb-0.5"></i>오답노트<span id="nav-wrong" class="nav-dot hidden"></span></button>
+            <button onclick="go('analysis')" data-nav="analysis" class="nav-btn py-2"><i class="fa-solid fa-chart-simple block text-base mb-0.5"></i>학습 분석</button>
+            <button onclick="go('student')" data-nav="student" class="nav-btn py-2"><i class="fa-solid fa-pen-nib block text-base mb-0.5"></i>학생 출제</button>
+        </div>
+    </nav>
+
+    <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-4 py-2 rounded-full shadow-lg hidden z-50"></div>
+
+    <script src="data.js"></script>
+    <script src="share.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
