@@ -4,6 +4,7 @@
 const BACKEND = 'https://script.google.com/macros/s/AKfycbyXSjCfWY_HiZFqW_OBR-FQDoIfF1z_STqyKWUI31MacHeY3u7hbirFSFDvW-5yuUHaJQ/exec';
 const PAST_SET = 'past';
 const PORTAL_KEY = 'portal_session'; // history26 포털 로그인({sid,name}) — 같은 github.io 출처라 읽을 수 있다
+const HANDOFF_KEY = 'portal_handoff'; // 포털 '학생 화면 테스트' 계정 — portal_session이 없을 때만 쓴다
 const PROFILE_KEY = 'fp3_profile_v1';
 
 const Share = (() => {
@@ -12,7 +13,7 @@ const Share = (() => {
 
   let profile = readJSON(PROFILE_KEY); // { sid, name } | null
   if (!profile) {
-    const ps = readJSON(PORTAL_KEY);
+    const ps = readJSON(PORTAL_KEY) || readJSON(HANDOFF_KEY);
     if (ps && ps.sid && ps.name && String(ps.sid).length <= 12) { profile = { sid: String(ps.sid), name: String(ps.name) }; writeJSON(PROFILE_KEY, profile); }
   }
 
