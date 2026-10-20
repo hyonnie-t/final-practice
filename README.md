@@ -5,6 +5,6 @@
 - 랜덤(10/20/전체)·중요도별·안 푼 문제·주제별 풀기
 - 문제마다 필요한 역사 지식 분석 → 결과·학습 분석에서 공부 순서와 교재 쪽, 체크리스트([final-test](https://hyonnie-t.github.io/final-test/)) 질문 안내
 - 오답노트: 틀린 문제 자동 저장, 틀린 이유·메모, 다시 맞히면 '해결'
-- 학생 출제: Firebase 프로젝트 `daeyoung-final-practice` Firestore `studentProblems`에 공유. 보안 규칙 `firestore.rules`(올리기·읽기·신고 +1만 허용, 수정·삭제 불가). 숨기려면 콘솔에서 문서 삭제 또는 `hidden: true`
+- 학생 출제·풀이 기록: history26 백엔드(Apps Script)에 저장 — 시트 `기출_학생출제`(문제), `기말점검_기록`(세트 `past`, 풀이 기록). 학번+이름이 인증이고 final-test와 같은 로그인(portal_session)을 쓴다. 공개 목록엔 별명만 나온다.
 
 데이터: `data.js` (`PROBLEMS`의 `lv` = 중요도 3/2/1, `CONCEPTS`의 `w` = 수업 강조 정도). 기록은 브라우저 localStorage에만 저장된다.

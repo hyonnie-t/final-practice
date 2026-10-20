@@ -10,7 +10,7 @@ let S = load();
 function load() {
   let s = {};
   try { s = JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch (e) {}
-  return { log: s.log || {}, notes: s.notes || {}, studentSolved: s.studentSolved || {} };
+  return { log: s.log || {}, notes: s.notes || {}, studentSolved: s.studentSolved || {}, sy: s.sy || {} };
 }
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} }
 
@@ -25,6 +25,7 @@ function record(pid, ok, pick) {
   if (!ok) S.notes[pid] = { ...(S.notes[pid] || {}), solved: false, at: Date.now() };
   else if (S.notes[pid]) S.notes[pid].solved = true; // 오답노트에 있던 문제를 다시 맞히면 해결
   save();
+  queueSync();
 }
 
 // ───────── 공통 ─────────
@@ -51,7 +52,7 @@ let current = 'home';
 function go(view, arg) {
   current = view;
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.nav === view));
-  const r = { home: renderHome, topics: renderTopics, notes: renderNotes, analysis: renderAnalysis, student: renderStudent, quiz: renderQuiz, result: renderResult, concept: renderConcept, write: renderWrite }[view];
+  const r = { home: renderHome, topics: renderTopics, notes: renderNotes, analysis: renderAnalysis, student: renderStudent, quiz: renderQuiz, result: renderResult, concept: renderConcept, write: renderWrite, profile: renderProfile }[view];
   r(arg);
   updateHeader();
   window.scrollTo(0, 0);
@@ -73,6 +74,8 @@ function renderHome() {
         <button onclick="go('notes')" class="bg-rose-50 rounded-xl py-2"><p class="text-lg font-bold text-rose-600">${wrongN}</p><p class="text-[10px] text-rose-500">오답노트</p></button>
       </div>
     </section>
+
+    ${profileCard()}
 
     <section class="space-y-2">
       <h2 class="text-xs font-bold text-slate-500 px-1"><i class="fa-solid fa-shuffle mr-1"></i>랜덤으로 풀기</h2>
@@ -437,7 +440,116 @@ function renderAnalysis() {
 
 function resetAll() {
   if (!confirm('풀이 기록과 오답노트를 모두 지울까요? 되돌릴 수 없어요.')) return;
-  S = { log: {}, notes: {}, studentSolved: {} }; save(); go('home');
+  S = { log: {}, notes: {}, studentSolved: {}, sy: {} }; save(); go('home');
+}
+
+// ───────── 내 정보 · 서버 동기화 ─────────
+// 풀이 기록은 history26 백엔드(기말점검_기록, 세트 past)에 문항별 최근 결과만 올린다. 오답노트 메모·이유는 이 기기에만 있다.
+let syncState = 'local'; // local | pending | ok | err
+let syncTimer = null, syncing = false;
+const SYNC_TEXT = { local: '이 기기에만 저장돼요', pending: '☁️ 저장 중…', ok: '☁️ 선생님께 저장됨', err: '⚠️ 저장 실패 · 자동으로 다시 시도해요' };
+function setSync(st) {
+  syncState = st;
+  const el = document.getElementById('sync-st');
+  if (el) el.textContent = SYNC_TEXT[st] || '';
+}
+const pendingIds = () => PROBLEMS.filter(p => lastOf(p.id) && lastOf(p.id).t > (S.sy[p.id] || 0)).map(p => p.id);
+function queueSync() {
+  if (!Share.profile) return;
+  setSync('pending');
+  clearTimeout(syncTimer); syncTimer = setTimeout(flushSync, 1200);
+}
+async function flushSync() {
+  if (!Share.profile || syncing) return;
+  const ids = pendingIds();
+  if (!ids.length) { setSync('ok'); return; }
+  syncing = true;
+  try {
+    const batch = ids.slice(0, 100);
+    const items = batch.map(id => { const l = lastOf(id); return { set: PAST_SET, qid: id, know: l.ok ? 'know' : 'unknown', ans: l.pick.join(','), self: '', sub: true, ts: l.t }; });
+    await Share.saveRecords(items);
+    batch.forEach(id => { S.sy[id] = lastOf(id).t; });
+    save();
+    syncing = false;
+    if (pendingIds().length) return flushSync();
+    setSync('ok');
+  } catch (err) {
+    syncing = false; setSync('err');
+    clearTimeout(syncTimer); syncTimer = setTimeout(flushSync, 60000);
+  }
+}
+window.addEventListener('online', () => { if (pendingIds().length) queueSync(); });
+
+// 서버 기록을 합친다(문항마다 더 새로운 쪽이 이김)
+function mergeRecords(items) {
+  items.forEach(it => {
+    const p = it.set === PAST_SET && PROB[it.qid];
+    if (!p) return;
+    const ts = it.ts || 0;
+    if (lastOf(p.id) && lastOf(p.id).t >= ts) { S.sy[p.id] = Math.max(S.sy[p.id] || 0, ts); return; }
+    const ok = it.know === 'know';
+    (S.log[p.id] = S.log[p.id] || []).push({ t: ts, ok, pick: String(it.ans || '').split(',').map(Number).filter(Boolean) });
+    S.log[p.id].sort((a, b) => a.t - b.t);
+    if (!ok) S.notes[p.id] = { ...(S.notes[p.id] || {}), solved: false, at: ts };
+    else if (S.notes[p.id]) S.notes[p.id].solved = true;
+    S.sy[p.id] = ts;
+  });
+  save();
+}
+
+function profileCard() {
+  const p = Share.profile;
+  return p
+    ? `<section class="bg-white rounded-xl border border-slate-200 px-3 py-2 flex items-center justify-between text-[11px]">
+        <span class="font-bold text-slate-700">👤 ${esc(p.sid)} ${esc(p.name)}</span>
+        <span id="sync-st" class="text-slate-500">${SYNC_TEXT[syncState]}</span>
+        <button onclick="go('profile')" class="text-indigo-600 font-bold">바꾸기</button>
+      </section>`
+    : `<button onclick="go('profile')" class="w-full text-left bg-violet-50 border border-violet-100 rounded-xl px-3 py-2.5 text-[11px] text-violet-900 leading-relaxed">
+        <b>👤 내 정보 입력하기</b> — 풀이 기록이 선생님께 저장되고, 다른 기기에서도 이어 풀 수 있고, 친구들 문제 올리기에도 참여할 수 있어요. (입력 안 해도 풀기는 돼요)
+      </button>`;
+}
+
+function renderProfile() {
+  const p = Share.profile;
+  $view().innerHTML = `
+    <button onclick="go('home')" class="text-[11px] font-bold text-slate-500"><i class="fa-solid fa-arrow-left mr-1"></i>처음으로</button>
+    <form id="pform" onsubmit="submitProfile(event)" class="bg-white rounded-2xl p-4 border border-slate-200 space-y-3 text-xs" autocomplete="off">
+      <h2 class="text-sm font-bold text-slate-800">👤 내 정보</h2>
+      <p class="text-slate-500 leading-relaxed">입력하면 내 풀이 기록이 선생님만 볼 수 있는 서버에 저장되고 다른 기기에서도 이어 할 수 있어요. 공개된 곳에는 올라가지 않아요.</p>
+      <label class="block space-y-1"><span class="font-bold text-slate-600">학번</span>
+        <input type="text" name="sid" inputmode="numeric" maxlength="12" required value="${p ? esc(p.sid) : ''}" class="w-full border border-slate-300 rounded-lg p-2" placeholder="예: 30101"></label>
+      <label class="block space-y-1"><span class="font-bold text-slate-600">이름</span>
+        <input type="text" name="name" maxlength="20" required value="${p ? esc(p.name) : ''}" class="w-full border border-slate-300 rounded-lg p-2" placeholder="예: 홍길동"></label>
+      <p id="perr" class="text-rose-600" role="alert"></p>
+      <button class="w-full py-3 bg-indigo-600 text-white font-bold text-sm rounded-xl">저장하고 불러오기</button>
+      ${p ? '<button type="button" onclick="logoutProfile()" class="w-full py-2 text-[11px] text-slate-500 underline">이 기기에서 내 정보 지우기</button>' : ''}
+    </form>`;
+}
+
+async function submitProfile(e) {
+  e.preventDefault();
+  const f = e.target;
+  const np = { sid: f.sid.value.trim(), name: f.name.value.trim() };
+  const btn = f.querySelector('button'); btn.disabled = true; btn.textContent = '확인 중…';
+  document.getElementById('perr').textContent = '';
+  try {
+    const items = await Share.loadRecords(np);
+    Share.setProfile(np);
+    S.sy = {}; // 이 기기의 기록은 전부 다시 올린다(서버가 더 새로우면 서버 것을 받음)
+    mergeRecords(items);
+    save(); toast('불러왔어요'); go('home'); flushSync();
+  } catch (err) {
+    document.getElementById('perr').textContent = err instanceof TypeError || err.name === 'AbortError'
+      ? '서버에 연결하지 못했어요. 네트워크를 확인해 주세요. (이 기기에서는 계속 쓸 수 있어요)'
+      : '학번과 이름을 확인해 주세요.';
+    btn.disabled = false; btn.textContent = '저장하고 불러오기';
+  }
+}
+
+function logoutProfile() {
+  if (!confirm('이 기기에서 내 정보를 지울까요?\n(서버에 저장된 기록은 그대로 있고, 이 기기의 풀이 기록도 남아요.)')) return;
+  Share.setProfile(null); S.sy = {}; save(); setSync('local'); go('home');
 }
 
 // ───────── 학생 출제 ─────────
@@ -457,10 +569,10 @@ async function renderStudent() {
     </div>
     <p class="text-[11px] text-violet-700 bg-violet-50 border border-violet-100 rounded-xl p-2.5 leading-relaxed">
       <i class="fa-solid fa-triangle-exclamation mr-1"></i>친구들이 직접 만든 문제예요. <b>오류가 있을 수 있으니</b> 교과서와 비교하며 풀고, 이상하면 신고해 주세요.
-      ${Share.shared ? '' : '<br><b>지금은 내 기기에만 저장돼요</b> (공유 기능 준비 중).'}
+      ${Share.profile ? '' : '<br><b>문제를 올리거나 신고하려면 \'내 정보\'(학번·이름)가 필요해요.</b> 풀어 보기만 하는 건 입력 없이 돼요.'}
     </p>
     <div id="slist" class="space-y-2"><p class="text-center text-xs text-slate-400 py-6"><i class="fa-solid fa-spinner fa-spin mr-1"></i>불러오는 중…</p></div>`;
-  try { studentList = await Share.list(); } catch (e) { document.getElementById('slist').innerHTML = '<p class="text-center text-xs text-rose-500 py-6">문제를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</p>'; return; }
+  try { studentList = await Share.list(); } catch (e) { document.getElementById('slist').innerHTML = '<p class="text-center text-xs text-rose-500 py-6">문제를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.<br><span class="text-slate-400">(인터넷이 느리면 몇 초 걸릴 수 있어요)</span></p>'; return; }
   drawStudentList();
 }
 
@@ -495,8 +607,12 @@ function startStudent(id) {
 }
 
 async function reportStudent(id) {
+  if (!Share.profile) { toast('신고하려면 먼저 \'내 정보\'를 입력해 주세요'); go('profile'); return; }
   if (!confirm('이 문제에 오류가 있다고 신고할까요?')) return;
-  try { await Share.report(id); toast('신고했어요. 고마워요!'); } catch (e) { toast('신고하지 못했어요'); }
+  try {
+    const r = await Share.report(id);
+    toast(r.duplicate ? '이미 신고한 문제예요' : '신고했어요. 고마워요!');
+  } catch (e) { toast(e instanceof TypeError || e.name === 'AbortError' ? '서버에 연결하지 못했어요' : e.message); }
 }
 
 const conceptOpts = (tid) => Object.entries(CONCEPTS).filter(([, c]) => c.topic === tid)
@@ -504,6 +620,13 @@ const conceptOpts = (tid) => Object.entries(CONCEPTS).filter(([, c]) => c.topic 
 function fillConcepts(tid) { document.getElementById('wconcepts').innerHTML = conceptOpts(tid); }
 
 function renderWrite() {
+  if (!Share.profile) {
+    $view().innerHTML = `<button onclick="go('student')" class="text-[11px] font-bold text-slate-500"><i class="fa-solid fa-arrow-left mr-1"></i>학생 출제 목록으로</button>
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 text-center space-y-3"><p class="text-sm font-bold text-slate-800">문제를 올리려면 내 정보가 필요해요</p>
+      <p class="text-xs text-slate-500">학번·이름은 선생님만 볼 수 있고, 다른 친구들에게는 별명만 보여요.</p>
+      <button onclick="go('profile')" class="px-5 py-2.5 bg-violet-600 text-white font-bold text-sm rounded-xl">내 정보 입력하기</button></div>`;
+    return;
+  }
   $view().innerHTML = `
     <button onclick="go('student')" class="text-[11px] font-bold text-slate-500"><i class="fa-solid fa-arrow-left mr-1"></i>학생 출제 목록으로</button>
     <form id="wform" onsubmit="submitWrite(event)" class="bg-white rounded-2xl p-4 border border-slate-200 space-y-3 text-xs">
@@ -525,7 +648,7 @@ function renderWrite() {
       </div>
       <label class="block space-y-1"><span class="font-bold text-slate-600">해설</span>
         <textarea name="exp" rows="3" maxlength="400" required class="w-full border border-slate-300 rounded-lg p-2" placeholder="왜 그 답이 맞는지, 다른 선택지는 왜 틀린지"></textarea></label>
-      <p class="text-[10px] text-slate-500 bg-slate-50 rounded-lg p-2">올린 문제는 '학생 출제' 표시와 함께 ${Share.shared ? '모든 친구에게 공유돼요' : '이 기기에 저장돼요'}. 중요도는 고른 지식을 바탕으로 자동으로 매겨져요. 한 번 올리면 고칠 수 없으니 교과서로 한 번 더 확인하세요.</p>
+      <p class="text-[10px] text-slate-500 bg-slate-50 rounded-lg p-2">올린 문제는 '학생 출제' 표시와 함께 모든 친구에게 공유돼요(선생님은 작성자를 볼 수 있어요). 한 사람이 10개까지 올릴 수 있어요. 중요도는 고른 지식을 바탕으로 자동으로 매겨져요. 한 번 올리면 고칠 수 없으니 교과서로 한 번 더 확인하세요.</p>
       <button class="w-full py-3 bg-violet-600 text-white font-bold text-sm rounded-xl">문제 올리기</button>
     </form>`;
 }
@@ -542,7 +665,13 @@ async function submitWrite(e) {
   };
   const btn = f.querySelector('button'); btn.disabled = true; btn.textContent = '올리는 중…';
   try { await Share.add(p); toast('문제를 올렸어요!'); go('student'); }
-  catch (err) { toast('올리지 못했어요. 다시 시도해 주세요'); btn.disabled = false; btn.textContent = '문제 올리기'; }
+  catch (err) { toast(err instanceof TypeError || err.name === 'AbortError' ? '서버에 연결하지 못했어요. 다시 시도해 주세요' : err.message); btn.disabled = false; btn.textContent = '문제 올리기'; }
 }
 
+if (Share.profile) {
+  setSync('pending');
+  Share.loadRecords(Share.profile)
+    .then(items => { mergeRecords(items); if (current === 'home') go('home'); return flushSync(); })
+    .catch(() => setSync('err'));
+}
 go('home');
