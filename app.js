@@ -66,7 +66,8 @@ function renderHome() {
   const wrongN = wrongOpenIds().length;
   const cnt = (lv) => PROBLEMS.filter(p => p.lv === lv).length;
   $view().innerHTML = `
-    <section class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+    ${Share.profile ? '' : registerHero()}
+    <section class="card p-4">
       <p class="text-xs text-slate-500">2023~2025 기말고사에서 이번 시험 범위에 맞는 문제 ${PROBLEMS.length}개를 골랐어요.</p>
       <div class="grid grid-cols-3 gap-2 mt-3 text-center">
         <div class="bg-slate-50 rounded-xl py-2"><p class="text-lg font-bold text-indigo-700">${done.length}</p><p class="text-[10px] text-slate-500">푼 문제</p></div>
@@ -75,7 +76,7 @@ function renderHome() {
       </div>
     </section>
 
-    ${profileCard()}
+    ${Share.profile ? profileCard() : ''}
 
     <section class="space-y-2">
       <h2 class="text-xs font-bold text-slate-500 px-1"><i class="fa-solid fa-shuffle mr-1"></i>랜덤으로 풀기</h2>
@@ -497,10 +498,30 @@ function mergeRecords(items) {
   save();
 }
 
+function registerHero() {
+  return `<section class="hero-reg" id="reg-hero">
+    <div class="flex items-center gap-3">
+      <span class="hero-ico"><i class="fa-solid fa-user-pen"></i></span>
+      <div>
+        <p class="hero-step">STEP 1 · 먼저 이것부터!</p>
+        <h2 class="hero-title">내 정보 등록하기</h2>
+      </div>
+    </div>
+    <p class="hero-desc">학번과 이름을 넣으면 <b>풀이 기록이 자동 저장</b>되고, 다른 기기에서도 이어 풀 수 있어요. 친구들 문제 올리기도 할 수 있어요.</p>
+    <form id="pform" onsubmit="submitProfile(event)" autocomplete="off" class="grid gap-2 md:grid-cols-[1fr_1fr_auto] mt-3">
+      <label class="hero-field"><span>학번</span><input type="text" name="sid" inputmode="numeric" maxlength="12" required placeholder="예: 30101"></label>
+      <label class="hero-field"><span>이름</span><input type="text" name="name" maxlength="20" required placeholder="예: 홍길동"></label>
+      <button class="hero-btn">등록하고 시작</button>
+    </form>
+    <p id="perr" class="text-rose-100 text-xs mt-2 empty:hidden" role="alert"></p>
+    <p class="hero-note"><i class="fa-solid fa-lock mr-1"></i>학번·이름은 선생님만 볼 수 있어요. 입력 없이도 풀기는 돼요 ↓</p>
+  </section>`;
+}
+
 function profileCard() {
   const p = Share.profile;
   return p
-    ? `<section class="bg-white rounded-xl border border-slate-200 px-3 py-2 flex items-center justify-between text-[11px]">
+    ? `<section class="card px-3 py-2.5 flex items-center justify-between text-[11px]">
         <span class="font-bold text-slate-700">👤 ${esc(p.sid)} ${esc(p.name)}</span>
         <span id="sync-st" class="text-slate-500">${SYNC_TEXT[syncState]}</span>
         <button onclick="go('profile')" class="text-indigo-600 font-bold">바꾸기</button>
@@ -543,7 +564,7 @@ async function submitProfile(e) {
     document.getElementById('perr').textContent = err instanceof TypeError || err.name === 'AbortError'
       ? '서버에 연결하지 못했어요. 네트워크를 확인해 주세요. (이 기기에서는 계속 쓸 수 있어요)'
       : '학번과 이름을 확인해 주세요.';
-    btn.disabled = false; btn.textContent = '저장하고 불러오기';
+    btn.disabled = false; btn.textContent = f.closest('.hero-reg') ? '등록하고 시작' : '저장하고 불러오기';
   }
 }
 
