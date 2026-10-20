@@ -1,6 +1,7 @@
 // 학생 출제 문제 저장소.
 // SHARE_CONFIG가 비어 있으면 이 기기(브라우저)에만 저장하고, Firestore 설정을 넣으면 모두에게 공유된다.
-const SHARE_CONFIG = null; // 예: { projectId: 'xxx', apiKey: 'xxx' }
+// 웹 API 키는 공개용(보안은 firestore.rules가 맡는다)
+const SHARE_CONFIG = { projectId: 'daeyoung-final-practice', apiKey: 'AIzaSyDQfGLdPvwXmXoO1NTKjzgnUjEk1d7l42E' };
 
 const Share = (() => {
   const LOCAL_KEY = 'fp3_student_problems_v1';
