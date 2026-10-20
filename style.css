@@ -29,3 +29,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothi
 
 .student-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 9999px; background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
 textarea, input[type=text], select { font-size: 16px; }
+
+/* 폭: 폰 28rem → 태블릿 세로 48rem → 태블릿 가로·큰 화면 64rem (모든 웹앱 기본: 태블릿 대응) */
+.wrap { max-width: 28rem; margin-left: auto; margin-right: auto; }
+@media (min-width: 768px) {
+  .wrap { max-width: 48rem; }
+  main.wrap { padding-left: 1.5rem; padding-right: 1.5rem; }
+  .text-\[10px\] { font-size: 12px; }
+  .text-\[11px\] { font-size: 13px; }
+  .text-xs { font-size: 14px; line-height: 1.6; }
+  .text-sm { font-size: 16px; }
+  .choice { font-size: 15px; padding: 12px 14px; }
+  .qbox { font-size: 15px; }
+  .tbl { font-size: 14px; }
+  nav .wrap button { padding-top: 10px; padding-bottom: 10px; font-size: 13px; }
+}
+@media (min-width: 1100px) { .wrap { max-width: 64rem; } }
+/* 가로로 짧은 화면에서도 하단 메뉴가 내용을 가리지 않게 */
+body { padding-bottom: 5.5rem; }

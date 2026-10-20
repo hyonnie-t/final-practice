@@ -92,7 +92,7 @@ function renderHome() {
 
     <section class="space-y-2">
       <h2 class="text-xs font-bold text-slate-500 px-1"><i class="fa-solid fa-layer-group mr-1"></i>주제별로 풀기</h2>
-      <div class="grid grid-cols-2 gap-2">${topicButtons()}</div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-2">${topicButtons()}</div>
     </section>
 
     <section class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-[11px] text-indigo-900 leading-relaxed space-y-1">
@@ -117,7 +117,7 @@ function topicButtons() {
 function renderTopics() {
   $view().innerHTML = `
     <h2 class="text-sm font-bold text-slate-700 px-1">주제를 골라 풀어 보세요</h2>
-    <div class="grid grid-cols-2 gap-2">${topicButtons()}</div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">${topicButtons()}</div>
     <div class="bg-white border border-slate-200 rounded-xl p-3 text-[11px] text-slate-600">
       <p class="font-bold mb-1"><i class="fa-solid fa-list-check mr-1 text-indigo-600"></i>교과서 내용부터 정리하고 싶다면</p>
       <a href="${CHECKLIST_URL}" target="_blank" class="text-indigo-600 font-bold underline">기말고사 질문 체크리스트 열기 →</a>
@@ -194,10 +194,10 @@ function renderQuiz() {
       <span><b class="text-indigo-700">${esc(Q.title)}</b> · ${Q.idx + 1} / ${Q.items.length}</span>
     </div>
     <div class="w-full bg-slate-200 rounded-full h-1.5"><div class="bg-indigo-500 h-full rounded-full" style="width:${(Q.idx + (Q.checked ? 1 : 0)) / Q.items.length * 100}%"></div></div>
-    <article class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3">
-      <div class="flex flex-wrap gap-1.5 items-center">${head}${lvBadge(p.lv)}<span class="text-[10px] text-slate-400">${topicOf(p.topic) ? topicOf(p.topic).name : ''}</span></div>
-      ${student ? '<p class="text-[10px] text-violet-600 bg-violet-50 rounded-lg px-2 py-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i>학생이 만든 문제라 오류가 있을 수 있어요. 교과서와 꼭 비교해 보세요.</p>' : ''}
-      ${questionHTML(p, student)}
+    <article class="bg-white rounded-2xl p-4 md:p-6 border border-slate-200 shadow-sm space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-3 md:items-start">
+      <div class="flex flex-wrap gap-1.5 items-center md:col-span-2">${head}${lvBadge(p.lv)}<span class="text-[10px] text-slate-400">${topicOf(p.topic) ? topicOf(p.topic).name : ''}</span></div>
+      ${student ? '<p class="md:col-span-2 text-[10px] text-violet-600 bg-violet-50 rounded-lg px-2 py-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i>학생이 만든 문제라 오류가 있을 수 있어요. 교과서와 꼭 비교해 보세요.</p>' : ''}
+      <div class="space-y-3">${questionHTML(p, student)}</div>
       <div class="space-y-2">
         ${p.ch.map((c, i) => `<button class="choice ${choiceCls(i)}" ${Q.checked ? 'disabled' : ''} onclick="pickQ(${i + 1})"><span class="num">${i + 1}</span><span>${student ? esc(c) : c === CIRCLE[i] ? '' : c}</span></button>`).join('')}
       </div>
@@ -279,7 +279,7 @@ function renderResult() {
     ${weak.length ? `
     <section class="space-y-2">
       <h2 class="text-sm font-bold text-slate-700 px-1"><i class="fa-solid fa-route mr-1 text-indigo-600"></i>이 순서로 공부해 보세요</h2>
-      ${weak.map((cid, i) => studyCard(cid, i + 1)).join('')}
+      <div class="grid md:grid-cols-2 gap-3 items-start">${weak.map((cid, i) => studyCard(cid, i + 1)).join('')}</div>
     </section>` : ''}
 
     <div class="grid grid-cols-2 gap-2">
@@ -347,7 +347,7 @@ function renderNotes() {
       <i class="fa-solid fa-circle-check text-4xl text-emerald-400"></i>
       <p class="text-xs font-bold text-slate-600">남은 오답이 없어요!</p>
       <p class="text-[11px]">문제를 풀다 틀리면 여기에 모여요. 다시 맞히면 '해결'로 옮겨져요.</p></div>`}
-    ${open.map(pid => noteCard(pid)).join('')}
+    <div class="grid md:grid-cols-2 gap-3 items-start">${open.map(pid => noteCard(pid)).join('')}</div>
     ${solved.length ? `<details class="bg-white rounded-xl border border-slate-200 p-3">
       <summary class="text-xs font-bold text-emerald-700 cursor-pointer"><i class="fa-solid fa-check mr-1"></i>다시 풀어서 해결한 문제 (${solved.length})</summary>
       <div class="mt-2 space-y-1">${solved.map(pid => problemRow(PROB[pid])).join('')}</div>
@@ -422,7 +422,7 @@ function renderAnalysis() {
 
     ${weak.length ? `<section class="space-y-2">
       <h2 class="text-sm font-bold text-slate-700 px-1"><i class="fa-solid fa-route mr-1 text-rose-500"></i>먼저 다시 공부할 것</h2>
-      ${weak.map((s, i) => `<div class="relative">${studyCard(s.cid, i + 1)}<span class="absolute top-3 right-3 text-[10px] font-bold text-rose-500">관련 문제 ${s.wrong}개 틀림</span></div>`).join('')}
+      <div class="grid md:grid-cols-2 gap-3 items-start">${weak.map((s, i) => `<div class="relative">${studyCard(s.cid, i + 1)}<span class="absolute top-3 right-3 text-[10px] font-bold text-rose-500">관련 문제 ${s.wrong}개 틀림</span></div>`).join('')}</div>
     </section>` : ''}
 
     ${untried.length && triedAny ? `<section class="bg-white rounded-xl border border-slate-200 p-3 space-y-1.5">
