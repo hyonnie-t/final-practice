@@ -66,6 +66,7 @@ function renderHome() {
   const wrongN = wrongOpenIds().length;
   const cnt = (lv) => PROBLEMS.filter(p => p.lv === lv).length;
   $view().innerHTML = `
+    <figure class="cover-banner"><img src="cover.webp" width="1200" height="671" alt="" decoding="async"></figure>
     ${Share.profile ? '' : registerHero()}
     <section class="card p-4">
       <p class="text-xs text-slate-500">2023~2025 기말고사에서 이번 시험 범위에 맞는 문제 ${PROBLEMS.length}개를 골랐어요.</p>
