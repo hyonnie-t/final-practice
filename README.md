@@ -7,4 +7,4 @@
 - 오답노트: 틀린 문제 자동 저장, 틀린 이유·메모, 다시 맞히면 '해결'
 - 학생 출제·풀이 기록: history26 백엔드(Apps Script)에 저장 — 시트 `기출_학생출제`(문제), `기말점검_기록`(세트 `past`, 풀이 기록). 학번+이름이 인증이고 final-test와 같은 로그인(portal_session)을 쓴다. 공개 목록엔 별명만 나온다.
 
-데이터: `data.js` (`PROBLEMS`의 `lv` = 중요도 3/2/1, `CONCEPTS`의 `w` = 수업 강조 정도). 기록은 브라우저 localStorage에만 저장된다.
+데이터: `data.js` (`PROBLEMS`의 `lv` = 중요도 3/2/1, `CONCEPTS`의 `w` = 수업 강조 정도). 풀이 기록은 이 브라우저(localStorage)에 먼저 남고, 학번+이름으로 들어오면 위 history26 백엔드(`ftSubmit`, 세트 `past`)에도 저장된다.
